@@ -2,22 +2,14 @@ package com.turkoid.rest.resources;
 
 import com.turkoid.rest.dao.UserDao;
 import com.turkoid.rest.model.User;
-import jersey.repackaged.com.google.common.collect.Lists;
 
-import javax.naming.InitialContext;
-import javax.sql.DataSource;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.container.ConnectionCallback;
 import javax.ws.rs.core.GenericEntity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.List;
 
 /**

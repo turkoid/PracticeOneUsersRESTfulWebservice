@@ -2,8 +2,9 @@ package com.turkoid.rest.dao;
 
 import com.turkoid.rest.model.User;
 
-import javax.ws.rs.core.Response;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
