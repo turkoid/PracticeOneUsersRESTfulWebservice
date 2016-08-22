@@ -1,5 +1,9 @@
 package com.turkoid.rest.dao;
 
+import org.jooq.DSLContext;
+import org.jooq.SQLDialect;
+import org.jooq.impl.DSL;
+
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
@@ -23,5 +27,9 @@ public class DatabaseUtils {
     public static void initDataSource() throws NamingException {
         InitialContext ic = new InitialContext();
         dataSource = (DataSource) ic.lookup(DATABASE_RESOURCE);
+    }
+
+    public static DSLContext getJooqDslContext() throws Exception {
+        return DSL.using(getConnection(), SQLDialect.MYSQL);
     }
 }
