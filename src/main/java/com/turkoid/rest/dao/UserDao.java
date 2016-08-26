@@ -1,112 +1,132 @@
 package com.turkoid.rest.dao;
 
+import com.turkoid.rest.dao.common.DaoResult;
+import com.turkoid.rest.dao.common.DatabaseUtils;
+import com.turkoid.rest.dao.jooq.practiceone.tables.records.UserRecord;
 import com.turkoid.rest.model.User;
-import org.jooq.DSLContext;
+import org.jooq.*;
 import org.jooq.conf.ParamType;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import javax.ws.rs.PathParam;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
+import static com.turkoid.rest.dao.jooq.practiceone.Tables.USER;
+import static org.jooq.impl.DSL.*;
 
 /**
  * Created by turkoid on 8/21/2016.
  */
 public class UserDao {
 
-    public static List<User> getUsers() throws Exception {
+    public static DaoResult<User> getUsers() throws Exception {
         DSLContext jooq = DatabaseUtils.getJooqDslContext();
-        String sql = jooq.select()
-                .from(table("tUsers"))
-                .getSQL();
+        Result<UserRecord> result = jooq.selectFrom(USER).fetch();
 
-        Connection conn = DatabaseUtils.getConnection();
-        Statement stmt = conn.createStatement();
-
-        ResultSet rs = stmt.executeQuery(sql);
         List<User> users = new ArrayList<>();
-        while (rs.next()) {
+        for (UserRecord userRecord : result) {
             User user = new User();
-            user.setId(rs.getInt("id"));
-            user.setName(rs.getString("name"));
-            user.setAttending(rs.getBoolean("status"));
+            user.setId(userRecord.getId());
+            user.setName(userRecord.getName());
+            user.setAttending(userRecord.getStatus());
             users.add(user);
         }
-        return users;
+
+        return new DaoResult<>(users, DaoResult.Operation.READ);
     }
 
-    public static User getUser(int id) throws Exception {
+    public static DaoResult<User> getUser(int id) throws Exception {
         DSLContext jooq = DatabaseUtils.getJooqDslContext();
-        String sql = jooq.select()
-                .from(table("tUsers"))
-                .where(field("id").equal(id))
-                .getSQL(ParamType.INLINED);
+        UserRecord userRecord = jooq.selectFrom(USER)
+                .where(USER.ID.eq(id))
+                .fetchOne();
 
-        Connection conn = DatabaseUtils.getConnection();
-        Statement stmt = conn.createStatement();
-
-        ResultSet rs = stmt.executeQuery(sql);
         User user = null;
-        if (rs.next()) {
+        if (userRecord != null) {
             user = new User();
-            user.setId(id);
-            user.setName(rs.getString("name"));
-            user.setAttending(rs.getBoolean("status"));
+            user.setId(userRecord.getId());
+            user.setName(userRecord.getName());
+            user.setAttending(userRecord.getStatus());
         }
-        return user;
+
+        return  new DaoResult<>(user, DaoResult.Operation.READ);
     }
 
-    public static User addUser(User user) throws Exception {
+    public static DaoResult<User> addUser(User user, boolean updateOnDuplicate) throws Exception {
         if (user != null) {
             DSLContext jooq = DatabaseUtils.getJooqDslContext();
-            String sql = jooq.insertInto(table("tUsers"))
-                    .columns(field("name"), field("status"))
-                    .values(user.getName(), user.isAttending())
-                    .getSQL(ParamType.INLINED);
 
-            Connection conn = DatabaseUtils.getConnection();
-            Statement stmt = conn.createStatement();
 
-            if (stmt.executeUpdate(sql, Statement.RETURN_GENERATED_KEYS) > 0) {
-                ResultSet rs = stmt.getGeneratedKeys();
-                if (rs.next()) {
-                    user.setId(rs.getInt(1));
+            UserRecord userRecord = jooq.newRecord(USER);
+            if (user.getId() != null) userRecord.setId(user.getId());
+            userRecord.setName(user.getName());
+            if (user.isAttending() != null) userRecord.setStatus(user.isAttending());
+
+            //jooq 3.8 doesn't support chaining 'returning' and 'onduplicatekeyupdate'
+            InsertQuery<UserRecord> qry = jooq.insertQuery(USER);
+            qry.setRecord(userRecord);
+            qry.setReturning(USER.ID);
+            if (updateOnDuplicate) {
+                qry.onDuplicateKeyUpdate(true);
+                Map<Field<?>, ?> map = Arrays.stream(USER.fields())
+                        .filter(field -> !USER.ID.equals(field)) //don't update id field again
+                        .filter(field -> userRecord.getValue(field) != null) //only map fields with values
+                        .collect(Collectors.toMap(Function.identity(), userRecord::getValue)); //field -> value
+                qry.addValuesForUpdate(map);
+            }
+            int result = qry.execute();
+            if (result == 1) {
+                //if it inserts, the count is 1
+                Record record = qry.getReturnedRecord();
+                if (record != null) {
+                    //so there is a special case where the result will be 1, but it was not inserted and nothing changed
+                    user.setId(record.getValue(USER.ID));
+                    return new DaoResult<>(user, DaoResult.Operation.CREATED);
                 }
             }
+
+            return new DaoResult<>(user, DaoResult.Operation.UPDATED);
         }
-        return user;
+        return DaoResult.NULL;
     }
 
-    public static boolean updateUser(User user) throws Exception {
+    public static DaoResult<User> addUser(User user) throws Exception {
+        return addUser(user, false);
+    }
+
+    public static DaoResult<User> updateUser(User user) throws Exception {
         if (user != null) {
             DSLContext jooq = DatabaseUtils.getJooqDslContext();
-            String sql = jooq.update(table("tUsers"))
-                    .set(field("name"), user.getName())
-                    .set(field("status"), user.isAttending())
-                    .where(field("id").eq(user.getId()))
-                    .getSQL(ParamType.INLINED);
+            UserRecord userRecord = new UserRecord();
+            if (user.getId() != null) userRecord.setId(user.getId());
+            userRecord.setName(user.getName());
+            if (user.isAttending() != null) userRecord.setStatus(user.isAttending());
 
-            Connection conn = DatabaseUtils.getConnection();
-            Statement stmt = conn.createStatement();
+            int rowsUpdated = jooq.update(USER)
+                    .set(userRecord)
+                    .execute();
 
-            return stmt.executeUpdate(sql) > 0;
+            return new DaoResult<>(user, DaoResult.Operation.UPDATED);
         }
-        return false;
+        return DaoResult.NULL;
     }
 
-    public static boolean deleteUser(int id) throws Exception {
+    public static DaoResult<User> deleteUser(int id) throws Exception {
         DSLContext jooq = DatabaseUtils.getJooqDslContext();
-        String sql = jooq.delete(table("tUsers"))
-                .where(field("id").eq(id))
-                .getSQL(ParamType.INLINED);
+        int rowsDeleted = jooq.delete(USER)
+                .where(USER.ID.eq(id))
+                .execute();
 
-        Connection conn = DatabaseUtils.getConnection();
-        Statement stmt = conn.createStatement();
+        return new DaoResult<>(DaoResult.Operation.DELETED, rowsDeleted);
+    }
 
-        return stmt.executeUpdate(sql) > 0;
+    public static DaoResult<User> deleteUsers() throws Exception {
+        DSLContext jooq = DatabaseUtils.getJooqDslContext();
+        int rowsDeleted = jooq.delete(USER).execute();
+        return new DaoResult<>(DaoResult.Operation.DELETED, rowsDeleted);
     }
 }

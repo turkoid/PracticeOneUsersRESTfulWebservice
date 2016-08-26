@@ -1,4 +1,4 @@
-package com.turkoid.rest.dao;
+package com.turkoid.rest.dao.common;
 
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;

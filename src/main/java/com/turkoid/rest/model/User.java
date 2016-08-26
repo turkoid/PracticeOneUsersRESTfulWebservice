@@ -10,23 +10,23 @@ import javax.xml.bind.annotation.XmlType;
 @XmlRootElement
 @XmlType(name = "user")
 public class User {
-    private int id;
+    private Integer id;
     private String name;
-    private boolean attending;
+    private Boolean attending;
 
     public User() {}
 
-    public User(int id, String name, boolean attending) {
+    public User(Integer id, String name, Boolean attending) {
         this.id = id;
         this.name = name;
         this.attending = attending;
     }
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
@@ -38,11 +38,20 @@ public class User {
         this.name = name;
     }
 
-    public boolean isAttending() {
+    public Boolean isAttending() {
         return attending;
     }
 
-    public void setAttending(boolean attending) {
+    public void setAttending(Boolean attending) {
         this.attending = attending;
+    }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", attending=" + attending +
+                '}';
     }
 }
