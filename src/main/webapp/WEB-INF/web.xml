@@ -13,7 +13,7 @@
     </servlet>
     <servlet-mapping>
         <servlet-name>Jersey Web Application</servlet-name>
-        <url-pattern>/webapi/*</url-pattern>
+        <url-pattern>/*</url-pattern>
     </servlet-mapping>
     <resource-ref>
         <description>DB Connection</description>
